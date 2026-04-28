@@ -638,7 +638,7 @@ function inst_getVersionBranch() {
     local ACV_PATCH=0
     local ACV_SPECIAL=0;
     local curldata=$(curl -f --silent -H 'Cache-Control: no-cache' "$1" || echo "{}")
-    local parsed=$(echo "$curldata" | "$AC_PATH_DEPS/jsonpath/JSONPath.sh" -b '$.compatibility.*.[version,branch]')
+    local parsed=$(echo "$curldata" | bash "$AC_PATH_DEPS/jsonpath/JSONPath.sh" -b '$.compatibility.*.[version,branch]')
 
     semverParseInto "$ACORE_VERSION" ACV_MAJOR ACV_MINOR ACV_PATCH ACV_SPECIAL
 

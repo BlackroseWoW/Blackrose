@@ -132,7 +132,7 @@ function inst_get_default_branch() {
     local repo="$1"
     local def
     def=$(curl --silent "https://api.github.com/repos/azerothcore/${repo}" \
-        | "$AC_PATH_DEPS/jsonpath/JSONPath.sh" -b '$.default_branch')
+        | bash "$AC_PATH_DEPS/jsonpath/JSONPath.sh" -b '$.default_branch')
     if [ -z "$def" ]; then
         def="master"
     fi

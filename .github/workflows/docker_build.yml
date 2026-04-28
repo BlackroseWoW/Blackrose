@@ -107,7 +107,10 @@ jobs:
           version: ${{ steps.version.outputs.version }}
           push: ${{ env.RUNNING_ON_PRIMARY_BRANCH }}
 
+      # Optional for production compose; failures should not block GHCR push
+      # of worldserver/authserver/db-import/client-data or VPS deploy.
       - name: build dev-server
+        continue-on-error: true
         uses: ./.github/actions/docker-tag-and-build
         with:
           image-prefix: ${{ env.IMAGE_PREFIX }}

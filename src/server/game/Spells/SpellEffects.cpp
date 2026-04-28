@@ -58,6 +58,7 @@
 #include "Util.h"
 #include "Vehicle.h"
 #include "World.h"
+#include "WorldConfig.h"
 #include "WorldPacket.h"
 
  /// @todo: this import is not necessary for compilation and marked as unused by the IDE
@@ -247,6 +248,9 @@ void Spell::EffectUnused(SpellEffIndex /*effIndex*/)
 
 void Spell::EffectResurrectNew(SpellEffIndex effIndex)
 {
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
@@ -4606,6 +4610,9 @@ void Spell::EffectSummonObject(SpellEffIndex effIndex)
 
 void Spell::EffectResurrect(SpellEffIndex effIndex)
 {
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
@@ -4816,6 +4823,9 @@ void Spell::EffectForceDeselect(SpellEffIndex /*effIndex*/)
 
 void Spell::EffectSelfResurrect(SpellEffIndex effIndex)
 {
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
         return;
 
@@ -5182,6 +5192,9 @@ void Spell::EffectDispelMechanic(SpellEffIndex effIndex)
 
 void Spell::EffectResurrectPet(SpellEffIndex /*effIndex*/)
 {
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
         return;
 

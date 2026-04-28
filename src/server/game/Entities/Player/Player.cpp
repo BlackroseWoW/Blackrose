@@ -87,6 +87,7 @@
 #include "Vehicle.h"
 #include "Weather.h"
 #include "World.h"
+#include "WorldConfig.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
@@ -4374,6 +4375,9 @@ void Player::BuildPlayerRepop()
 
 void Player::ResurrectPlayer(float restore_percent, bool applySickness)
 {
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     if (!sScriptMgr->OnPlayerCanResurrect(this))
         return;
 
@@ -4864,10 +4868,20 @@ void Player::RepopAtGraveyard()
         if (isDead())                                        // not send if alive, because it used in TeleportTo()
         {
             WorldPacket data(SMSG_DEATH_RELEASE_LOC, 4 * 4); // show spirit healer position on minimap
-            data << ClosestGrave->Map;
-            data << ClosestGrave->x;
-            data << ClosestGrave->y;
-            data << ClosestGrave->z;
+            if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+            {
+                data << uint32(-1);
+                data << float(0);
+                data << float(0);
+                data << float(0);
+            }
+            else
+            {
+                data << ClosestGrave->Map;
+                data << ClosestGrave->x;
+                data << ClosestGrave->y;
+                data << ClosestGrave->z;
+            }
             SendDirectMessage(&data);
         }
     }

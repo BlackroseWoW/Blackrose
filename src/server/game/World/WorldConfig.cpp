@@ -512,6 +512,7 @@ void WorldConfig::BuildConfigCache()
     SetConfigValue<bool>(CONFIG_ENABLE_DAZE, "Daze.Enabled", true);
 
     SetConfigValue<bool>(CONFIG_ENABLE_INFINITEAMMO, "InfiniteAmmo.Enabled", false);
+    SetConfigValue<bool>(CONFIG_HARDCORE_ENABLED, "Hardcore.Enable", false);
 
     SetConfigValue<uint32>(CONFIG_DAILY_RBG_MIN_LEVEL_AP_REWARD, "DailyRBGArenaPoints.MinLevel", 71);
 

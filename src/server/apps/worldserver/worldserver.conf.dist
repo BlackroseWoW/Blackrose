@@ -1,5 +1,5 @@
 ################################################
-# AzerothCore World Server configuration file #
+# Blackrose World Server configuration file #
 ################################################
 [worldserver]
 
@@ -1128,6 +1128,16 @@ SaveRespawnTimeImmediately = 1
 #                     1 - (Enabled)
 
 Server.LoginInfo = 0
+
+#
+#    Hardcore.Enable
+#        Description: Enable hardcore mode:
+#                     - disables all resurrection effects and requests
+#                     - disables corpse reclaim and spirit healer resurrection
+#        Default:     0 - (Disabled)
+#                     1 - (Enabled)
+#
+Hardcore.Enable = 1
 
 #
 #     ShowKickInWorld
@@ -2431,11 +2441,11 @@ MaxGroupXPDistance = 74
 #                     1 - (Rate.XP.Explore)
 #                     1 - (Rate.XP.Pet)
 
-Rate.XP.Kill      = 1
-Rate.XP.Quest     = 1
+Rate.XP.Kill      = 3
+Rate.XP.Quest     = 3
 Rate.XP.Quest.DF  = 1
-Rate.XP.Explore   = 1
-Rate.XP.Pet       = 1
+Rate.XP.Explore   = 3
+Rate.XP.Pet       = 3
 
 #
 #    Rate.XP.BattlegroundKill...

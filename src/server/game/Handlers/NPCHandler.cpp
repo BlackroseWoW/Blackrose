@@ -34,6 +34,7 @@
 #include "Trainer.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include "WorldConfig.h"
 #include <cmath>
 
 enum StableResultCode
@@ -239,6 +240,9 @@ void WorldSession::HandleGossipHelloOpcode(WorldPacket& recvData)
 void WorldSession::HandleSpiritHealerActivateOpcode(WorldPacket& recvData)
 {
     LOG_DEBUG("network", "WORLD: CMSG_SPIRIT_HEALER_ACTIVATE");
+
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
 
     ObjectGuid guid;
 

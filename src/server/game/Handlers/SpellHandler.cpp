@@ -31,6 +31,7 @@
 #include "Vehicle.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include "WorldConfig.h"
 
 void WorldSession::HandleClientCastFlags(WorldPacket& recvPacket, uint8 castFlags, SpellCastTargets& targets)
 {
@@ -705,6 +706,9 @@ void WorldSession::HandleTotemDestroyed(WorldPackets::Totem::TotemDestroyed& tot
 void WorldSession::HandleSelfResOpcode(WorldPacket& /*recvData*/)
 {
     LOG_DEBUG("network", "WORLD: CMSG_SELF_RES");                  // empty opcode
+
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
 
     if (SpellInfo const* spell = sSpellMgr->GetSpellInfo(_player->GetUInt32Value(PLAYER_SELF_RES_SPELL)))
     {

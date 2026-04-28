@@ -49,6 +49,7 @@
 #include "Vehicle.h"
 #include "WhoListCacheMgr.h"
 #include "World.h"
+#include "WorldConfig.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include <zlib.h>
@@ -641,6 +642,9 @@ void WorldSession::HandleBugOpcode(WorldPacket& recv_data)
 
 void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
 {
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     ObjectGuid guid;
     recv_data >> guid;
 
@@ -676,6 +680,9 @@ void WorldSession::HandleReclaimCorpseOpcode(WorldPacket& recv_data)
 
 void WorldSession::HandleResurrectResponseOpcode(WorldPacket& recv_data)
 {
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     ObjectGuid guid;
     uint8 status;
     recv_data >> guid;
@@ -798,8 +805,11 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
                 {
                     if (player->GetCorpseLocation().GetMapId() == at->target_mapId)
                     {
-                        player->ResurrectPlayer(0.5f);
-                        player->SpawnCorpseBones();
+                        if (!sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+                        {
+                            player->ResurrectPlayer(0.5f);
+                            player->SpawnCorpseBones();
+                        }
                     }
                 }
             }
@@ -1673,6 +1683,9 @@ void WorldSession::HandleAreaSpiritHealerQueueOpcode(WorldPacket& recv_data)
 {
     LOG_DEBUG("network", "WORLD: CMSG_AREA_SPIRIT_HEALER_QUEUE");
 
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     Battleground* bg = _player->GetBattleground();
 
     ObjectGuid guid;
@@ -1694,6 +1707,9 @@ void WorldSession::HandleAreaSpiritHealerQueueOpcode(WorldPacket& recv_data)
 
 void WorldSession::HandleHearthAndResurrect(WorldPacket& /*recv_data*/)
 {
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
+
     if (_player->IsInFlight())
         return;
 

@@ -1,6 +1,10 @@
 name: docker tag and build
 description: a helper action to shorten generating docker tags and building
 inputs:
+  image-prefix:
+    description: image prefix including registry and namespace
+    type: string
+    required: true
   component-name:
     description: name of the component/docker image (eg worldserver, authserver)
     type: string
@@ -24,7 +28,7 @@ runs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: acore/ac-wotlk-${{ inputs.component-name }}
+        images: ${{ inputs.image-prefix }}-${{ inputs.component-name }}
         tags: |
           type=raw,value=${{ inputs.version }}
           type=ref,event=branch

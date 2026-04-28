@@ -1,0 +1,63 @@
+name: deploy-vps-master
+
+on:
+  workflow_run:
+    workflows: ["docker-build"]
+    types:
+      - completed
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps-master
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to VPS on master push
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VPS_APP_DIR }}"
+
+            # Ensure deployment always targets your master branch.
+            git fetch --all --prune
+            git checkout master
+            git pull --ff-only origin master
+
+            if [ -n "${{ secrets.VPS_DOCKER_REGISTRY || '' }}" ]; then
+              echo "${{ secrets.VPS_DOCKER_PASSWORD }}" | docker login "${{ secrets.VPS_DOCKER_REGISTRY }}" -u "${{ secrets.VPS_DOCKER_USERNAME }}" --password-stdin
+            fi
+
+            # Optional build/install step on server.
+            if [ "${{ secrets.VPS_RUN_BUILD }}" = "true" ]; then
+              mkdir -p build
+              cd build
+              cmake .. -DCMAKE_INSTALL_PREFIX="${HOME}/azeroth-server" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSCRIPTS=static -DMODULES=static
+              make -j"$(nproc)"
+              make install
+            fi
+
+            # Pull and recreate containers from your custom images.
+            DOCKER_IMAGE_PREFIX="${{ secrets.DOCKER_IMAGE_PREFIX }}" \
+            DOCKER_IMAGE_TAG="${{ secrets.DOCKER_IMAGE_TAG || 'master' }}" \
+              docker compose -f docker-compose.yml -f conf/dist/docker-compose.override.yml pull
+
+            DOCKER_IMAGE_PREFIX="${{ secrets.DOCKER_IMAGE_PREFIX }}" \
+            DOCKER_IMAGE_TAG="${{ secrets.DOCKER_IMAGE_TAG || 'master' }}" \
+              docker compose -f docker-compose.yml -f conf/dist/docker-compose.override.yml up -d --remove-orphans

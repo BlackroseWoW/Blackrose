@@ -47,7 +47,17 @@ void ACSoapThread(const std::string& host, uint16 port)
             continue;   // ran into an accept timeout
 
         LOG_DEBUG("network.soap", "ACSoap: accepted connection from IP={}.{}.{}.{}", (int)(soap.ip >> 24) & 0xFF, (int)(soap.ip >> 16) & 0xFF, (int)(soap.ip >> 8) & 0xFF, (int)soap.ip & 0xFF);
-        struct soap* thread_soap = soap_copy(&soap);// make a safe copy
+        struct soap* thread_soap = soap_copy(&soap); // make a safe copy
+        if (!thread_soap)
+        {
+            LOG_ERROR("network.soap", "ACSoap: soap_copy failed");
+            soap_closesock(&soap);
+            continue;
+        }
+
+        // gSOAP: the accepted client FD must not remain on the listening struct
+        // after soap_copy, or both contexts share one socket and closes/RSTs break clients.
+        soap.socket = SOAP_INVALID_SOCKET;
 
         process_message(thread_soap);
     }
@@ -61,7 +71,11 @@ void process_message(struct soap* soap_message)
 {
     LOG_TRACE("network.soap", "SOAPWorkingThread::process_message");
 
-    soap_serve(soap_message);
+    int const ret = soap_serve(soap_message);
+    if (ret)
+        LOG_ERROR("network.soap", "soap_serve returned {} (soap->error={}); clients may see empty HTTP replies if no fault was sent",
+            ret, soap_message->error);
+
     soap_destroy(soap_message); // dealloc C++ data
     soap_end(soap_message); // dealloc data and clean up
     soap_free(soap_message); // detach soap struct and fre up the memory

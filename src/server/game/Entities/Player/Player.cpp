@@ -4373,9 +4373,10 @@ void Player::BuildPlayerRepop()
     sScriptMgr->OnPlayerReleasedGhost(this);
 }
 
-void Player::ResurrectPlayer(float restore_percent, bool applySickness)
+void Player::ResurrectPlayer(float restore_percent, bool applySickness, bool force)
 {
-    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+    if (!force && sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED) &&
+        (!GetSession() || AccountMgr::IsPlayerAccount(GetSession()->GetSecurity())))
         return;
 
     if (!sScriptMgr->OnPlayerCanResurrect(this))
@@ -12646,6 +12647,9 @@ void Player::RemoveItemDependentAurasAndCasts(Item* pItem)
 
 uint32 Player::GetResurrectionSpellId()
 {
+    if (!sWorld->getBoolConfig(CONFIG_PLAYER_ALLOW_SELF_RESURRECTION))
+        return 0;
+
     // search priceless resurrection possibilities
     uint32 prio = 0;
     uint32 spell_id = 0;

@@ -2056,6 +2056,15 @@ StartHeroicPlayerMoney = 2000
 PlayerStart.String = ""
 
 #
+#    Player.AllowSelfResurrection
+#        Description: Allow the release-spirit self-resurrect button from Soulstone, Shaman
+#                     Reincarnation, and similar (Twisting Nether trinket proc).
+#        Default:     1 - (Enabled, Blizzlike)
+#                     0 - (Disabled)
+
+Player.AllowSelfResurrection = 0
+
+#
 ###################################################################################################
 
 ###################################################################################################
@@ -4293,21 +4302,21 @@ Channel.ModerationGMLevel = 1
 #        Description: Level requirement for characters to be able to write in chat channels.
 #        Default:     1
 
-ChatLevelReq.Channel = 1
+ChatLevelReq.Channel = 0
 
 #
 #    ChatLevelReq.Whisper
 #        Description: Level requirement for characters to be able to whisper other characters.
 #        Default:     1
 
-ChatLevelReq.Whisper = 1
+ChatLevelReq.Whisper = 0
 
 #
 #    ChatLevelReq.Say
 #        Description: Level requirement for characters to be able to use say/yell/emote.
 #        Default:     1
 
-ChatLevelReq.Say = 1
+ChatLevelReq.Say = 0
 
 #
 #    PartyLevelReq
@@ -4358,7 +4367,7 @@ AllowTwoSide.Accounts = 1
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Calendar = 0
+AllowTwoSide.Interaction.Calendar = 1
 
 #
 #    AllowTwoSide.Interaction.Chat
@@ -4366,7 +4375,7 @@ AllowTwoSide.Interaction.Calendar = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Chat = 0
+AllowTwoSide.Interaction.Chat = 1
 
 #
 #    AllowTwoSide.Interaction.Emote
@@ -4374,7 +4383,7 @@ AllowTwoSide.Interaction.Chat = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Emote = 0
+AllowTwoSide.Interaction.Emote = 1
 
 #
 #    AllowTwoSide.Interaction.Channel
@@ -4382,7 +4391,7 @@ AllowTwoSide.Interaction.Emote = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Channel = 0
+AllowTwoSide.Interaction.Channel = 1
 
 #
 #    AllowTwoSide.Interaction.Group
@@ -4390,7 +4399,7 @@ AllowTwoSide.Interaction.Channel = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Group = 0
+AllowTwoSide.Interaction.Group = 1
 
 #
 #    AllowTwoSide.Interaction.Guild
@@ -4398,7 +4407,7 @@ AllowTwoSide.Interaction.Group = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Guild = 0
+AllowTwoSide.Interaction.Guild = 1
 
 #
 #    AllowTwoSide.Interaction.Arena
@@ -4406,7 +4415,7 @@ AllowTwoSide.Interaction.Guild = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Arena = 0
+AllowTwoSide.Interaction.Arena = 1
 
 #
 #    AllowTwoSide.Interaction.Auction
@@ -4415,7 +4424,7 @@ AllowTwoSide.Interaction.Arena = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Auction = 0
+AllowTwoSide.Interaction.Auction = 1
 
 #
 #    AllowTwoSide.Interaction.Mail
@@ -4423,7 +4432,7 @@ AllowTwoSide.Interaction.Auction = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Interaction.Mail = 0
+AllowTwoSide.Interaction.Mail = 1
 
 #
 #    AllowTwoSide.WhoList
@@ -4431,7 +4440,7 @@ AllowTwoSide.Interaction.Mail = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.WhoList = 0
+AllowTwoSide.WhoList = 1
 
 #
 #    AllowTwoSide.AddFriend
@@ -4439,7 +4448,7 @@ AllowTwoSide.WhoList = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.AddFriend = 0
+AllowTwoSide.AddFriend = 1
 
 #
 #    AllowTwoSide.Trade
@@ -4447,7 +4456,7 @@ AllowTwoSide.AddFriend = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-AllowTwoSide.Trade = 0
+AllowTwoSide.Trade = 1
 
 #
 #    TalentsInspecting

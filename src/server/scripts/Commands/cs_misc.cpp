@@ -1224,6 +1224,15 @@ public:
 
     static bool HandleReviveCommand(ChatHandler* handler, Optional<PlayerIdentifier> target)
     {
+        Unit* selectedTarget = handler->getSelectedUnit();
+        if (selectedTarget && selectedTarget->IsCreature() && !selectedTarget->IsPet())
+        {
+            if (selectedTarget->isDead())
+                selectedTarget->ToCreature()->Respawn(true);
+
+            return true;
+        }
+
         if (!target)
             target = PlayerIdentifier::FromTargetOrSelf(handler);
 
@@ -1234,7 +1243,10 @@ public:
         {
             auto targetPlayer = target->GetConnectedPlayer();
             targetPlayer->RemoveAurasDueToSpell(27827); // Spirit of Redemption
-            targetPlayer->ResurrectPlayer(!AccountMgr::IsPlayerAccount(targetPlayer->GetSession()->GetSecurity()) ? 1.0f : 0.5f);
+            targetPlayer->ResurrectPlayer(
+                !AccountMgr::IsPlayerAccount(targetPlayer->GetSession()->GetSecurity()) ? 1.0f : 0.5f,
+                false,
+                !AccountMgr::IsPlayerAccount(handler->GetSession()->GetSecurity()));
             targetPlayer->SpawnCorpseBones();
             targetPlayer->SaveToDB(false, false);
         }

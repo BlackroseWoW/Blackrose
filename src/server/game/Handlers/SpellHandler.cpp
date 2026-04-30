@@ -707,6 +707,9 @@ void WorldSession::HandleSelfResOpcode(WorldPacket& /*recvData*/)
 {
     LOG_DEBUG("network", "WORLD: CMSG_SELF_RES");                  // empty opcode
 
+    if (!sWorld->getBoolConfig(CONFIG_PLAYER_ALLOW_SELF_RESURRECTION))
+        return;
+
     if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
         return;
 

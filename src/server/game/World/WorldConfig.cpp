@@ -686,4 +686,6 @@ void WorldConfig::BuildConfigCache()
 
     // Achievement
     SetConfigValue<uint32>(CONFIG_ACHIEVEMENT_REALM_FIRST_KILL_WINDOW, "Achievement.RealmFirstKillWindow", 60);
+
+    SetConfigValue<bool>(CONFIG_PLAYER_ALLOW_SELF_RESURRECTION, "Player.AllowSelfResurrection", true);
 }

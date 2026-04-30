@@ -29,6 +29,14 @@
 
 !.gitkeep
 
+# Website runtime (rate limit buckets)
+/Blackrose Website/data/
+
+/launcher/node_modules/
+/launcher/dist/
+/launcher-wpf/**/bin/
+/launcher-wpf/**/obj/
+
 # default build directory if not specified by CMAKE configuration
 /out/*
 

@@ -248,9 +248,6 @@ void Spell::EffectUnused(SpellEffIndex /*effIndex*/)
 
 void Spell::EffectResurrectNew(SpellEffIndex effIndex)
 {
-    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
-        return;
-
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
@@ -258,6 +255,9 @@ void Spell::EffectResurrectNew(SpellEffIndex effIndex)
         return;
 
     if (!unitTarget->IsPlayer())
+        return;
+
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
         return;
 
     if (!unitTarget->IsInWorld())
@@ -4610,9 +4610,6 @@ void Spell::EffectSummonObject(SpellEffIndex effIndex)
 
 void Spell::EffectResurrect(SpellEffIndex effIndex)
 {
-    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
-        return;
-
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
@@ -4627,6 +4624,9 @@ void Spell::EffectResurrect(SpellEffIndex effIndex)
     {
         return;
     }
+
+    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
+        return;
 
     if (unitTarget->IsAlive() || !unitTarget->IsInWorld())
         return;
@@ -5192,9 +5192,6 @@ void Spell::EffectDispelMechanic(SpellEffIndex effIndex)
 
 void Spell::EffectResurrectPet(SpellEffIndex /*effIndex*/)
 {
-    if (sWorld->getBoolConfig(CONFIG_HARDCORE_ENABLED))
-        return;
-
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
         return;
 

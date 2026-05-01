@@ -1140,6 +1140,46 @@ Server.LoginInfo = 0
 Hardcore.Enable = 1
 
 #
+#    BlackroseDeath.Enable
+#    BlackroseDeath.Broadcast
+#    BlackroseDeath.Gravestone.Enable
+#    BlackroseDeath.Gravestone.Entry
+#    BlackroseDeath.Gravestone.Duration
+#    BlackroseDeath.Skip.Battleground
+#    BlackroseDeath.Skip.Arena
+#    BlackroseDeath.Skip.Instance
+#    BlackroseDeath.Hardcore.Only
+#        Description: Death announcement to all online players and optional
+#                     gravestone gameobject at corpse position (Blackrose).
+#                     Killer is taken from creature/PvP kill hooks when present.
+#        Default:     BlackroseDeath.Enable = 1
+#                     BlackroseDeath.Broadcast = 1
+#                     BlackroseDeath.Gravestone.Enable = 1
+#                     BlackroseDeath.Gravestone.Entry = 61 (fallback single entry)
+#                     BlackroseDeath.Gravestone.Entries = 61,148504
+#                       (randomly selected each death)
+#                     BlackroseDeath.Gravestone.Duration = 1209600 (14 days, seconds)
+#                     BlackroseDeath.Gravestone.GroundSnap = 1 (snap Z to floor)
+#                     BlackroseDeath.Gravestone.AllPhases = 1 (visible in all phases)
+#                     BlackroseDeath.Skip.Battleground = 1
+#                     BlackroseDeath.Skip.Arena = 1
+#                     BlackroseDeath.Skip.Instance = 0
+#                     BlackroseDeath.Hardcore.Only = 0 (if 1, only when Hardcore.Enable)
+
+BlackroseDeath.Enable = 1
+BlackroseDeath.Broadcast = 1
+BlackroseDeath.Gravestone.Enable = 1
+BlackroseDeath.Gravestone.Entry = 61
+BlackroseDeath.Gravestone.Entries = 61,148504
+BlackroseDeath.Gravestone.Duration = 1209600
+BlackroseDeath.Gravestone.GroundSnap = 1
+BlackroseDeath.Gravestone.AllPhases = 1
+BlackroseDeath.Skip.Battleground = 1
+BlackroseDeath.Skip.Arena = 1
+BlackroseDeath.Skip.Instance = 0
+BlackroseDeath.Hardcore.Only = 0
+
+#
 #     ShowKickInWorld
 #        Description: Determines whether a message is broadcast to the entire server when a
 #                     player gets kicked

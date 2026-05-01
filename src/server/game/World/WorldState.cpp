@@ -1249,7 +1249,16 @@ void WorldState::SetScourgeInvasionState(SIState state)
 {
     SIState oldState = m_siData.m_state;
     if (oldState == state)
+    {
+        // World_state can already be "disabled" while game_event or spawns are out of sync;
+        // re-applying disable must still tear down the invasion.
+        if (state == STATE_0_DISABLED)
+        {
+            StopScourgeInvasion();
+            Save(SAVE_ID_SCOURGE_INVASION);
+        }
         return;
+    }
 
     m_siData.m_state = state;
     if (oldState == STATE_0_DISABLED)
@@ -1416,6 +1425,12 @@ void ScourgeInvasionData::Reset()
     m_lastAttackZone = 0;
     m_broadcastTimer = 10000;
     memset(m_remaining, 0, sizeof(m_remaining));
+    m_pendingInvasions.clear();
+    m_pendingPallids.clear();
+    for (auto& pair : m_activeInvasions)
+        pair.second.mouthGuid = ObjectGuid();
+    for (auto& pair : m_cityAttacks)
+        pair.second.pallidGuid = ObjectGuid();
 }
 
 std::string ScourgeInvasionData::GetData()
@@ -1443,16 +1458,20 @@ void WorldState::StopScourgeInvasion()
     sGameEventMgr->StopEvent(GAME_EVENT_SCOURGE_INVASION_BLASTED_LANDS);
     sGameEventMgr->StopEvent(GAME_EVENT_SCOURGE_INVASION_EASTERN_PLAGUELANDS);
     sGameEventMgr->StopEvent(GAME_EVENT_SCOURGE_INVASION_BURNING_STEPPES);
+    sGameEventMgr->StopEvent(GAME_EVENT_SCOURGE_INVASION_50_INVASIONS);
+    sGameEventMgr->StopEvent(GAME_EVENT_SCOURGE_INVASION_100_INVASIONS);
+    sGameEventMgr->StopEvent(GAME_EVENT_SCOURGE_INVASION_150_INVASIONS);
     sGameEventMgr->StopEvent(GAME_EVENT_SCOURGE_INVASION_INVASIONS_DONE);
     sGameEventMgr->StopEvent(GAME_EVENT_SCOURGE_INVASION_BOSSES);
     BroadcastSIWorldstates();
-    m_siData.Reset();
 
     for (auto& [_, cityData] : m_siData.m_cityAttacks)
         OnDisable(cityData);
 
     for (auto& [_, zoneData] : m_siData.m_activeInvasions)
         OnDisable(zoneData);
+
+    m_siData.Reset();
 }
 
 uint32 WorldState::GetSIRemaining(SIRemaining remaining) const

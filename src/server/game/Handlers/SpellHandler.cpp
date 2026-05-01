@@ -368,6 +368,9 @@ void WorldSession::HandleGameobjectReportUse(WorldPacket& recvPacket)
     if (!go->IsWithinDistInMap(_player, INTERACTION_DISTANCE))
         return;
 
+    if (sScriptMgr->OnGossipHello(_player, go))
+        return;
+
     if (go->AI()->GossipHello(_player, true))
         return;
 

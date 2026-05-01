@@ -24,9 +24,6 @@
 /src/server/scripts/Custom/*
 !/src/server/scripts/Custom/README.md
 
-/*.override.yml
-/*.override.yaml
-
 !.gitkeep
 
 # Website runtime (rate limit buckets)

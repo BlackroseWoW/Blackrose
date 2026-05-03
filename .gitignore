@@ -117,3 +117,7 @@ local.properties
 #  !modules/yourmodule
 #
 # ==================
+
+# Track mod-autobalance (default AzerothCore rule `/modules/*` hides it from git).
+!/modules/mod-autobalance/
+!/modules/mod-autobalance/**

@@ -2169,9 +2169,9 @@ Rate.MoveSpeed.NPC = 1
 #        Description: Damage after fall rate.
 #        Default:     1
 
-Rate.Damage.Fall = 1
+Rate.Damage.Fall = 0.1
 
-#
+#   
 #    Rate.Talent
 #        Description: Talent point rate.
 #        Default:     1

@@ -12,6 +12,7 @@
 
 #include "Chat.h"
 #include "Config.h"
+#include "DBCStores.h"
 #include "GameObject.h"
 #include "Guild.h"
 #include "GuildMgr.h"
@@ -82,6 +83,25 @@ bool BrDeath_IsNoiseLastWords(std::string_view msg)
     return false;
 }
 
+std::string BrDeath_FormatMapInfo(Player const* player)
+{
+    if (!player)
+        return "?";
+
+    std::string mapTitle = "Unknown";
+    if (Map const* map = player->GetMap())
+        mapTitle = BrDeath_SanitizeForPipeLog(std::string(map->GetMapName()));
+
+    std::string zoneTitle = "Unknown";
+    if (AreaTableEntry const* area = sAreaTableStore.LookupEntry(player->GetAreaId()))
+        zoneTitle = BrDeath_SanitizeForPipeLog(
+            std::string(area->area_name[sWorld->GetDefaultDbcLocale()]));
+
+    std::ostringstream oss;
+    oss << mapTitle << " (map " << player->GetMapId() << ") - " << zoneTitle;
+    return oss.str();
+}
+
 void BrDeath_DeathFeedLog(Player const* player,
     uint8 level,
     std::string const& guildName,
@@ -97,13 +117,15 @@ void BrDeath_DeathFeedLog(Player const* player,
     std::string const words =
         BrDeath_SanitizeForPipeLog(lastWords.empty() ? "..." : lastWords);
 
+    std::string const mapInfo = BrDeath_FormatMapInfo(player);
+
     LOG_INFO("server.worldserver",
         "BRDEATH|{}|{}|{}|{}|{}|{}|{}|{}|{}",
         name,
         uint32(level),
         guild,
         killer,
-        player->GetMapId(),
+        mapInfo,
         player->GetPositionX(),
         player->GetPositionY(),
         player->GetPositionZ(),

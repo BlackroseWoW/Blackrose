@@ -9,6 +9,8 @@ WORLD_LOG="${WORLD_LOG:-}"
 if [[ -z "$WORLD_LOG" ]]; then
   if [[ -d /logs ]]; then
     WORLD_LOG="/logs/Server.log"
+  elif [[ -f "/home/jello/Blackrose/env/dist/logs/Server.log" ]]; then
+    WORLD_LOG="/home/jello/Blackrose/env/dist/logs/Server.log"
   else
     WORLD_LOG="/home/deploy/Blackrose/env/dist/logs/Server.log"
   fi
@@ -72,13 +74,15 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
-# Validate URL/token without posting to the channel (GET webhook with token).
+# Validate URL/token with POST that Discord rejects (HTTP 400, e.g. empty
+# message) — nothing appears in the channel. GET /webhooks/... can return
+# non-200 in some setups even when POST execute works, which would break tail.
 err="$(mktemp)"
 set +e
 probe_http="$(
   curl -g -sS -o /dev/null -w '%{http_code}' \
-    -H 'Accept: application/json' \
-    -X GET -- "$WEBHOOK_URL" 2>"$err"
+    -X POST -H 'Content-Type: application/json' \
+    -d '{}' -- "$WEBHOOK_URL" 2>"$err"
 )"
 probe_ec=$?
 set -e
@@ -92,11 +96,17 @@ if (( probe_ec != 0 )); then
   exit 1
 fi
 rm -f "$err"
-if [[ "$probe_http" != "200" ]]; then
-  echo "ERROR: Discord webhook probe failed (HTTP ${probe_http})." >&2
-  echo "       Check token/id; GET must return 200 for a valid webhook URL." >&2
-  exit 1
-fi
+case "$probe_http" in
+  2*|400)
+    ;; # 400 = empty/invalid body, no channel message
+  401|404)
+    echo "ERROR: Discord webhook probe failed (HTTP ${probe_http}); check URL/token." >&2
+    exit 1
+    ;;
+  *)
+    echo "WARN: Discord webhook probe unexpected HTTP ${probe_http}; continuing." >&2
+    ;;
+esac
 
 echo "death_webhook: ready (only NEW lines after this moment are sent)." >&2
 echo "death_webhook: tailing log: $WORLD_LOG" >&2
@@ -147,12 +157,29 @@ post_discord() {
   return 1
 }
 
+brdeath_coord_ok() {
+  # AzerothCore logs floats with '.'; reject empty / junk so Discord stays accurate.
+  [[ "$1" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]
+}
+
 tail -Fn0 "$WORLD_LOG" | while IFS= read -r line || [[ -n "$line" ]]; do
   [[ "$line" == *"BRDEATH|"* ]] || continue
 
+  line="${line//$'\r'/}"
+  # Strip everything through the first "BRDEATH|" (matches blackrose_death_announce.cpp order).
   data="${line#*BRDEATH|}"
-  # map field: DBC name + id, e.g. "Eastern Kingdoms (0)" (legacy lines may be numeric id only)
+  # map field: "MapName (map N) - ZoneName" from BrDeath_FormatMapInfo()
   IFS='|' read -r player level guild killer mapinfo x y z lastWords <<<"$data"
+
+  player="${player//$'\r'/}"
+  level="${level//$'\r'/}"
+  guild="${guild//$'\r'/}"
+  killer="${killer//$'\r'/}"
+  mapinfo="${mapinfo//$'\r'/}"
+  x="${x//$'\r'/}"
+  y="${y//$'\r'/}"
+  z="${z//$'\r'/}"
+  lastWords="${lastWords//$'\r'/}"
 
   # Basic validation (server sends 9 pipe fields; guild may be empty if format changes)
   if [[ -z "${player:-}" || -z "${level:-}" || -z "${killer:-}" || -z "${mapinfo:-}" ]]; then
@@ -162,6 +189,17 @@ tail -Fn0 "$WORLD_LOG" | while IFS= read -r line || [[ -n "$line" ]]; do
     continue
   fi
   [[ -n "${guild:-}" ]] || guild="(none)"
+
+  map_id="—"
+  if [[ "$mapinfo" =~ \(map\ ([0-9]+)\) ]]; then
+    map_id="${BASH_REMATCH[1]}"
+  fi
+
+  if ! brdeath_coord_ok "$x" || ! brdeath_coord_ok "$y" || ! brdeath_coord_ok "$z"; then
+    if [[ -n "${BRDEATH_WEBHOOK_DEBUG:-}" ]]; then
+      echo "death_webhook: WARN non-numeric coords for ${player}: x=(${x}) y=(${y}) z=(${z})" >&2
+    fi
+  fi
 
   # Discord field values max out at 1024 chars; keep it safe.
   lastWords="${lastWords:-...}"
@@ -179,6 +217,7 @@ tail -Fn0 "$WORLD_LOG" | while IFS= read -r line || [[ -n "$line" ]]; do
       --arg guild "$guild" \
       --arg killer "$killer" \
       --arg mapinfo "$mapinfo" \
+      --arg mapid "$map_id" \
       --arg x "$x" \
       --arg y "$y" \
       --arg z "$z" \
@@ -191,11 +230,13 @@ tail -Fn0 "$WORLD_LOG" | while IFS= read -r line || [[ -n "$line" ]]; do
           title: ("💀 " + $player + " has fallen"),
           description: (
             "**Level** " + $level + " • **Guild** " + $guild + "\n"
-            + "**Slain by** " + $killer + "\n"
-            + "**Map** `" + $mapinfo + "` • **Position** `" + $x + ", " + $y + ", " + $z + "`"
+            + "**Slain by** " + $killer
           ),
           color: $color,
           fields: [
+            {name: "Where", value: ("`" + $mapinfo + "`"), inline: false},
+            {name: "Map ID", value: ("`" + $mapid + "`"), inline: true},
+            {name: "Position (world)", value: ("`x=" + $x + " y=" + $y + " z=" + $z + "`"), inline: false},
             {name: "Last words", value: $words, inline: false}
           ],
           footer: {text: "• Blackrose Death Feed •"},

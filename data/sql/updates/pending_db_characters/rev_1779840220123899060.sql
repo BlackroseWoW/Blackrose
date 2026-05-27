@@ -1,0 +1,22 @@
+--
+-- Restore Darnassian (skill 113) on existing Worgen characters.
+--
+-- The first backfill (rev_1779837557859024191.sql) inserted skill 113 into
+-- character_skills for every race=12 character, but _LoadSkills on the next
+-- login wiped it because there was no SkillRaceClassInfo row covering
+-- (skill=113, race=Worgen). The world-side companion migration
+-- modules/mod-worgoblin/data/sql/db-world/2026_05_26_03_worgoblin_darnassian_skillraceclassinfo.sql
+-- now adds that row, so the skill survives _LoadSkills' validity check at
+-- Player.cpp:13762 going forward.
+--
+-- This rev simply re-inserts the row that got nuked. It is a no-op for any
+-- Worgen that was created AFTER 2026_05_26_03 applied (LearnDefaultSkills
+-- at Player::Create populates skill 113 from playercreateinfo_skills) and
+-- for any race-9 character (the WHERE filters on race=12), so it is safe to
+-- run repeatedly via the AzerothCore updater's PENDING-state rehash.
+--
+-- value/max=300 matches what SetSkill enforces for SKILL_RANGE_LANGUAGE at
+-- Player.cpp:11894, which is what LearnDefaultSkill would have written.
+--
+DELETE FROM `character_skills` WHERE `skill` = 113 AND `guid` IN (SELECT `guid` FROM `characters` WHERE `race` = 12);
+INSERT INTO `character_skills` (`guid`, `skill`, `value`, `max`) SELECT `guid`, 113, 300, 300 FROM `characters` WHERE `race` = 12;

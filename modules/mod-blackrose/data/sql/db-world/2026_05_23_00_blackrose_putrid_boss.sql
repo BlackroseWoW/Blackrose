@@ -169,14 +169,8 @@ VALUES
      6, 0, 0, 0, 0, 0, 0, 0,
      'Faegrim - in combat - CUSTOM_CAST Mutating Infection on random non-tank'),
 
-    -- 2b: Vile Gas - actual Rotface room AoE (spell 71218, green cloud puddle)
-    --     dropped on a random hostile every 18-24s. CUSTOM_CAST bp0 = 199
-    --     -> ~200 nature dmg per tick (3 ticks). Encourages the group to
-    --     spread / move out of the cloud.
-    (@BR_BOSS, 0, 12, 0, 0, 0, 100, 0, 18000, 24000, 20000, 26000, 0,
-     218, 71218, 0, 199, 0, 0, 0,
-     5, 0, 0, 0, 0, 0, 0, 0,
-     'Faegrim - in combat - CUSTOM_CAST Vile Gas on random hostile'),
+    -- (Vile Gas removed - the green-puddle mechanic was retired; the boss's
+    --  group-spread pressure comes from the Spawnling adds instead.)
 
     -- 3+4: Festering Spawn - summon 2 Festering Spawnlings every 25-32s
     --      with offsets so they appear flanking the boss.
@@ -218,6 +212,15 @@ VALUES
     (@BR_BOSS, 0, 11, 0, 6, 0, 100, 0, 0, 0, 0, 0, 0,
      1, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
      'Faegrim - on death - Talk 3'),
+
+    -- 12: on death - CALL_KILLEDMONSTER safety net. Worgen / Goblin quest
+    --     chains hand out the boss-kill credit; explicit force-grant of
+    --     the boss's own entry to all attackers covers the case where
+    --     the normal tag-credit chain misses (e.g. high-level helper
+    --     burning the boss but the questing player has a smaller tag).
+    (@BR_BOSS, 0, 12, 0, 6, 0, 100, 0, 0, 0, 0, 0, 0,
+     33, @BR_BOSS, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+     'Faegrim - on death - CALL_KILLEDMONSTER (safety net for Worgen/Goblin)'),
 
     -- ---- Festering Spawnling AI ----
     -- 0: in combat - CUSTOM_CAST Frostbolt (116) bp0 = 79 -> ~80 dmg every 3-5s
@@ -267,9 +270,9 @@ VALUES
 
 -- =============================================================
 -- creature_template_addon - no passive aura on the boss; the
--- visual flair comes from the active SmartAI casts (Slime Spray,
--- Vile Gas) instead. Keep the row in case we want to add
--- emote/visibility tweaks later.
+-- visual flair comes from the active SmartAI casts (Slime Spray
+-- + Mutating Infection) instead. Keep the row in case we want to
+-- add emote/visibility tweaks later.
 -- =============================================================
 DELETE FROM `creature_template_addon` WHERE `entry` IN (@BR_BOSS, @BR_BOSS_ADD);
 INSERT INTO `creature_template_addon`

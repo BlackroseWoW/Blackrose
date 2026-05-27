@@ -132,3 +132,7 @@ local.properties
 # Track mod-blackrose as the custom Black Rose feature module.
 !/modules/mod-blackrose/
 !/modules/mod-blackrose/**
+
+# Track mod-worgoblin (Worgen/Goblin custom races) as a feature module.
+!/modules/mod-worgoblin/
+!/modules/mod-worgoblin/**

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the Black Rose client DBC patch.
 
-Two modes:
+Three modes:
 
   customonly   Build DBC files containing ONLY the custom Black Rose rows.
                Useful for validating the binary writer; NOT a drop-in client
@@ -9,43 +9,49 @@ Two modes:
                with three rows and break every other spell). Output goes to
                staging/DBFilesClient/.
 
-  merge        Read base DBC files from input/DBFilesClient/, upsert the
-               Black Rose custom rows by ID, and write merged DBC files to
-               staging/DBFilesClient/. This is the real distributable.
-               Use this once you have extracted base DBCs from the client.
+  merge        Combine the three input layers into staging/ AND pack the
+               result into output/patch-Z.MPQ:
+                 1. input/stock/DBFilesClient/  - vanilla 3.3.5a DBCs the user
+                    extracted from their reference client (gitignored, this
+                    is copyrighted Blizzard data).
+                 2. input/custom/               - our committed custom tree
+                    (mod-worgoblin's race assets + pre-patched DBCs, plus
+                    Black Rose's BLP item icons under Interface/Icons/).
+                 3. definitions/*.json         - Black Rose row overlays
+                    upserted into the nine DBCs they touch.
+               Pass --no-pack to stop after staging/ is populated.
+
+  pack         Skip the merge and pack whatever is currently under staging/
+               into output/patch-Z.MPQ. Useful for re-packing after a
+               manual tweak to a staged file.
 
 Usage:
   python3 build_patch.py customonly
-  python3 build_patch.py merge
-
-The merged staging tree is what you pack into patch-Z.MPQ.
+  python3 build_patch.py merge [--no-pack]
+  python3 build_patch.py pack
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 import sys
 from pathlib import Path
 
 import dbc
+import mpq
 
 
 HERE = Path(__file__).parent
 ROOT = HERE.parent.parent
 DEF_DIR = HERE / "definitions"
-INPUT_DBC_DIR = HERE / "input" / "DBFilesClient"
-EXTRAS_DIR = HERE / "extras"
-EXTRAS_SRC_DIR = HERE / "extras_src"
+STOCK_DBC_DIR = HERE / "input" / "stock" / "DBFilesClient"
+CUSTOM_DIR = HERE / "input" / "custom"
 STAGING_ROOT = HERE / "staging"
 STAGING_DBC_DIR = STAGING_ROOT / "DBFilesClient"
-
-GLUEPARENT_LUA_REL = Path("Interface") / "GlueXML" / "GlueParent.lua"
-OVERLAY_LUA = HERE / "extras" / "Interface" / "GlueXML" / "BlackRoseLogin.lua"
-APPEND_BEGIN = "-- BEGIN BlackRoseLogin overlay (auto-appended) --"
-APPEND_END = "-- END BlackRoseLogin overlay --"
+OUTPUT_DIR = HERE / "output"
+OUTPUT_MPQ = OUTPUT_DIR / "patch-Z.MPQ"
 
 
 DEFINITION_TO_SCHEMA = {
@@ -68,37 +74,65 @@ def load_definition(name: str) -> list[dict]:
     return json.loads(path.read_text())
 
 
-def copy_extras() -> int:
-    """Mirror extras/ (BLP, MP3) into staging/.
+def base_dbc_path(filename: str) -> Path | None:
+    """Effective base DBC for a given filename.
 
-    Anything under extras/Interface/GlueXML/ is intentionally NOT copied
-    standalone - the BlackRoseLogin.lua source there is appended onto
-    the user's stock GlueParent.lua by append_to_glueparent_lua().
-    Shipping it as its own file alongside GlueParent.lua is what tripped
-    "Your login interface files are corrupt" in earlier attempts.
+    Resolution order:
+      1. input/custom/DBFilesClient/<filename> - if we ship a pre-patched
+         copy (e.g. mod-worgoblin's modified ChrRaces.dbc / Item.dbc /
+         Spell.dbc / ...), that becomes the base layer the JSON overlay
+         merges on top of.
+      2. input/stock/DBFilesClient/<filename>  - vanilla Blizzard DBC the
+         user extracted from their reference client.
 
-    With --no-glue, even more is skipped (no GlueXML staging at all).
+    Returns None if neither layer ships the file - caller decides whether
+    that is fatal.
     """
-    if not EXTRAS_DIR.is_dir():
-        return 0
-    copied = 0
-    for src in EXTRAS_DIR.rglob("*"):
+    custom_candidate = CUSTOM_DIR / "DBFilesClient" / filename
+    if custom_candidate.is_file():
+        return custom_candidate
+    stock_candidate = STOCK_DBC_DIR / filename
+    return stock_candidate if stock_candidate.is_file() else None
+
+
+def copy_custom_assets() -> tuple[int, int]:
+    """Mirror input/custom/ into staging/.
+
+    Returns (file_count, passthrough_dbc_count). DBCs that a Black Rose
+    JSON definition targets are NOT copied straight through here - they
+    will be re-emitted by build_merge() once the JSON overlay has been
+    applied on top of whichever layer (custom or stock) supplied the
+    base. DBCs that no definition touches (the other 20+ DBCs
+    mod-worgoblin patches: ChrRaces, CharSections, CreatureDisplayInfo,
+    etc.) are copied verbatim into staging/DBFilesClient/.
+
+    All non-DBC files (M2 / skin / blp / anim / ogg / lua / xml /
+    textures / ...) are always copied through.
+    """
+    overlay_dbc_filenames = {
+        dbc.SCHEMAS[schema_name].filename
+        for schema_name in DEFINITION_TO_SCHEMA.values()
+    }
+    file_count = 0
+    passthrough_dbc_count = 0
+    if not CUSTOM_DIR.is_dir():
+        return (0, 0)
+    for src in CUSTOM_DIR.rglob("*"):
         if not src.is_file():
             continue
-        rel = src.relative_to(EXTRAS_DIR)
-        # Always skip the GlueXML source files - they're append fodder,
-        # not standalone shippables.
-        if rel.parts[:2] == ("Interface", "GlueXML"):
+        rel = src.relative_to(CUSTOM_DIR)
+        if (
+            rel.parts[:1] == ("DBFilesClient",)
+            and rel.name in overlay_dbc_filenames
+        ):
             continue
-        if _SKIP_GLUE and rel.parts[:1] == ("Interface",):
-            # tighter skip with --no-glue to keep the test minimal
-            pass  # still ship Interface/Glues/* (BLP) - we want it for tests
         dst = STAGING_ROOT / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
-        copied += 1
-        print(f"  extras  {rel}")
-    return copied
+        file_count += 1
+        if rel.parts[:1] == ("DBFilesClient",):
+            passthrough_dbc_count += 1
+    return file_count, passthrough_dbc_count
 
 
 def validate_itemdisplay_icons() -> None:
@@ -135,73 +169,6 @@ def validate_itemdisplay_icons() -> None:
     print("  validated ItemDisplayInfo icons in staging/")
 
 
-def append_to_glueparent_lua() -> bool:
-    """Append the BlackRoseLogin overlay onto the user's stock GlueParent.lua.
-
-    Reads extras_src/Interface/GlueXML/GlueParent.lua (the user's copy
-    from interface.MPQ), appends the contents of our overlay source
-    (extras/Interface/GlueXML/BlackRoseLogin.lua) wrapped in marker
-    comments, and writes the merged Lua to
-    staging/Interface/GlueXML/GlueParent.lua.
-
-    Why this and not <Script>-injection in GlueParent.xml:
-        Earlier attempts patched GlueParent.xml to add a second
-        <Script> directive that pointed at a brand-new
-        BlackRoseLogin.lua we shipped alongside it. That tripped
-        "Your login interface files are corrupt please reinstall
-        the game" - either the glue XML parser only accepts one
-        <Script> per <Ui>, or new Lua files at non-stock glue paths
-        are rejected. Either way, the safest move is to NOT modify
-        any XML and to NOT introduce any new file at a glue path:
-        we ship a single file (modified GlueParent.lua) that the
-        unmodified GlueParent.xml already <Script>-loads.
-
-    Idempotent: re-running scrubs any prior appended block (delimited
-    by APPEND_BEGIN / APPEND_END markers) before re-appending the
-    current overlay source.
-
-    Returns True when a merged file was written, False when there is
-    no stock source to patch.
-    """
-    src = EXTRAS_SRC_DIR / GLUEPARENT_LUA_REL
-    if not src.exists():
-        return False
-    if not OVERLAY_LUA.exists():
-        sys.exit(
-            f"ERROR: overlay source {OVERLAY_LUA.relative_to(HERE)} "
-            "is missing. Re-pull the repo."
-        )
-
-    stock = src.read_text(encoding="utf-8")
-    overlay = OVERLAY_LUA.read_text(encoding="utf-8")
-
-    # Remove any previously-appended block so re-runs are idempotent.
-    pattern = re.compile(
-        re.escape(APPEND_BEGIN) + r".*?" + re.escape(APPEND_END) + r"\s*",
-        flags=re.DOTALL,
-    )
-    cleaned = pattern.sub("", stock).rstrip() + "\n"
-
-    merged = (
-        cleaned
-        + "\n"
-        + APPEND_BEGIN
-        + "\n"
-        + overlay.rstrip()
-        + "\n"
-        + APPEND_END
-        + "\n"
-    )
-    dst = STAGING_ROOT / GLUEPARENT_LUA_REL
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(merged, encoding="utf-8")
-    extra_lines = merged.count("\n") - cleaned.count("\n")
-    print(
-        f"  appended {GLUEPARENT_LUA_REL}  (+{extra_lines} lines of overlay)"
-    )
-    return True
-
-
 def build_customonly() -> None:
     STAGING_DBC_DIR.mkdir(parents=True, exist_ok=True)
     for def_name, schema_name in DEFINITION_TO_SCHEMA.items():
@@ -218,23 +185,82 @@ def build_customonly() -> None:
     print("'merge' mode for distribution.")
 
 
-def build_merge() -> None:
-    if not INPUT_DBC_DIR.exists():
+def pack_mpq(staging_root: Path = STAGING_ROOT, output_path: Path = OUTPUT_MPQ) -> tuple[int, int]:
+    """Pack every file under staging/ into a v1 MPQ at output/patch-Z.MPQ.
+
+    Self-verifies by reopening the freshly-written archive, decoding its
+    tables, and round-tripping one file's bytes against the staged source.
+    Returns (file_count_including_listfile, archive_size_bytes).
+    """
+    if not staging_root.is_dir():
+        sys.exit(f"ERROR: {staging_root.relative_to(HERE)}/ does not exist; run merge first")
+
+    writer = mpq.MpqWriter(output_path)
+    added = writer.add_directory(staging_root)
+    if added == 0:
+        sys.exit(f"ERROR: no files under {staging_root.relative_to(HERE)}/ to pack")
+    files, size = writer.write()
+    rel = output_path.relative_to(HERE)
+    print(f"  packed {added} file(s) + (listfile) -> {rel} ({size:,} bytes)")
+
+    # Self-verify: open the freshly written archive and read one file back.
+    # Picks a small file to keep the round-trip cheap, but if there isn't
+    # one we still validate header + tables decoded cleanly.
+    with mpq.MpqReader(output_path) as r:
+        if r.block_table_size != added + 1:
+            sys.exit(
+                "ERROR: round-trip mismatch:"
+                f" block_table_size={r.block_table_size}, expected {added + 1}"
+            )
+        sample = sorted(staging_root.rglob("*"))
+        sample = [p for p in sample if p.is_file() and p.stat().st_size < 65536]
+        if sample:
+            probe = sample[0]
+            rel_in_mpq = probe.relative_to(staging_root).as_posix().replace('/', '\\')
+            staged_bytes = probe.read_bytes()
+            mpq_bytes = r.read(rel_in_mpq)
+            if mpq_bytes != staged_bytes:
+                sys.exit(
+                    f"ERROR: round-trip mismatch on {rel_in_mpq}:"
+                    f" staged={len(staged_bytes)} bytes, mpq={len(mpq_bytes)} bytes"
+                )
+            print(f"  self-verified {rel_in_mpq} ({len(staged_bytes)} bytes)")
+    return files, size
+
+
+def build_merge(pack: bool = True) -> None:
+    if not STOCK_DBC_DIR.exists():
         sys.exit(
-            f"ERROR: {INPUT_DBC_DIR.relative_to(HERE)} does not exist.\n"
+            f"ERROR: {STOCK_DBC_DIR.relative_to(HERE)} does not exist.\n"
             "Extract the client base DBCs into that folder first.\n"
-            "See README.md > Extracting base DBCs."
+            "See README.md > Extracting stock DBCs."
         )
     STAGING_DBC_DIR.mkdir(parents=True, exist_ok=True)
+
+    custom_files, passthrough_dbc_count = copy_custom_assets()
+    if custom_files:
+        print(
+            f"  copied {custom_files} custom asset(s) into staging/"
+            f" ({passthrough_dbc_count} DBC{'s' if passthrough_dbc_count != 1 else ''}"
+            " straight-copied; overlay DBCs are merged below)"
+        )
+
     for def_name, schema_name in DEFINITION_TO_SCHEMA.items():
         schema = dbc.SCHEMAS[schema_name]
         custom_rows = load_definition(def_name)
-        base_path = INPUT_DBC_DIR / schema.filename
-        if not base_path.exists():
+        base_path = base_dbc_path(schema.filename)
+        if base_path is None:
             sys.exit(
-                f"ERROR: missing base file {base_path.relative_to(HERE)}.\n"
-                "Extract it from the client (see README.md)."
+                f"ERROR: no base for {schema.filename}.\n"
+                f"  Looked in {(CUSTOM_DIR / 'DBFilesClient').relative_to(HERE)}/"
+                f" and {STOCK_DBC_DIR.relative_to(HERE)}/.\n"
+                "  Extract the stock DBC from the client (see README.md)."
             )
+        # Annotate the merge log so it's obvious which layer the base came from.
+        try:
+            base_label = base_path.relative_to(ROOT).as_posix()
+        except ValueError:
+            base_label = base_path.name
         merged = dbc.read_dbc(base_path, schema)
         before = len(merged.rows)
         merge_count = 0
@@ -260,53 +286,40 @@ def build_merge() -> None:
             f" added={added:4d}"
             f" merged={merge_count:3d}"
             f" total={len(merged.rows):6d}"
+            f"   <- {base_label}"
         )
 
-    extras_count = copy_extras()
-    if extras_count:
-        print(f"\n  copied {extras_count} extras file(s) into staging/")
     validate_itemdisplay_icons()
-    if _SKIP_GLUE:
-        print("\n  --no-glue: skipping GlueParent.lua append.")
-    elif not append_to_glueparent_lua():
-        print(
-            "\nNOTE: extras_src/Interface/GlueXML/GlueParent.lua is missing.\n"
-            "  Without it the custom login screen will NOT activate; the\n"
-            "  patched MPQ will still ship the BLP and MP3, but nothing\n"
-            "  will paint them onto the login screen. Extract your stock\n"
-            "  GlueParent.lua from interface.MPQ into\n"
-            f"  {EXTRAS_SRC_DIR.relative_to(HERE)}/{GLUEPARENT_LUA_REL} and rerun."
-        )
-    print("\nDONE. staging/ is ready to pack into patch-Z.MPQ.")
+    if pack:
+        print()
+        pack_mpq()
+        print(f"\nDONE. {OUTPUT_MPQ.relative_to(HERE)} is ready to drop in the client.")
+    else:
+        print("\nDONE. staging/ is populated; --no-pack skipped MPQ creation.")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "mode",
-        choices=["customonly", "merge"],
+        choices=["customonly", "merge", "pack"],
         help="customonly: write only Black Rose rows; "
-        "merge: append/replace into base DBCs from input/",
+        "merge: stock + custom + JSON overlays into staging/ (and pack); "
+        "pack: pack staging/ into output/patch-Z.MPQ without re-merging",
     )
     parser.add_argument(
-        "--no-glue",
+        "--no-pack",
         action="store_true",
-        help="Skip the glue XML / Lua overlay - omit BlackRoseLogin.lua "
-        "and the patched GlueParent.xml from staging. Useful for isolating "
-        "whether the glue overlay is what's triggering 'Your login interface "
-        "files are corrupt'. The DBCs, BLP, and MP3 still ship.",
+        help="In 'merge' mode, stop after staging/ is populated and skip MPQ packing.",
     )
     args = parser.parse_args()
-    global _SKIP_GLUE
-    _SKIP_GLUE = bool(args.no_glue)
     if args.mode == "customonly":
         build_customonly()
+    elif args.mode == "merge":
+        build_merge(pack=not args.no_pack)
     else:
-        build_merge()
+        pack_mpq()
     return 0
-
-
-_SKIP_GLUE = False
 
 
 if __name__ == "__main__":

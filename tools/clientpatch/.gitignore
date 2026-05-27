@@ -1,5 +1,4 @@
-input/
-extras_src/
-staging/
+input/stock/
 __pycache__/
 *.pyc
+.python-deps/

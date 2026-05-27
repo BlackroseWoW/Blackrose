@@ -1,4 +1,10 @@
 input/stock/
+output/
 __pycache__/
 *.pyc
 .python-deps/
+
+# build artifacts / surgical-patch backups
+staging/**/*.bak.*
+*.preSLA
+*.preIcons

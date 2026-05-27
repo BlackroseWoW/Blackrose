@@ -10,15 +10,17 @@
 --      Boss now idles at his spawn coords with no movement script.
 --
 --   2. Tune boss spell damage WAY down. The CUSTOM_CAST templates were
---      reusing real ICC raid spells (Rotface Slime Spray 71215, Festergut
---      Vile Gas 71218) with their bp0 left at raid-tier numbers, and the
---      boss has DamageModifier 2.5 on top, so a single Slime Spray was
---      hitting tanks for 4-5k. Reduced bp0 by ~7-9x so a level-23 group
---      gets pressured but not gibbed:
+--      reusing real ICC raid spells (Rotface Slime Spray 71215) with their
+--      bp0 left at raid-tier numbers, and the boss has DamageModifier 2.5
+--      on top, so a single Slime Spray was hitting tanks for 4-5k.
+--      Reduced bp0 by ~7-9x so a level-23 group gets pressured but not
+--      gibbed:
 --        - Slime Spray (71215, victim cone)        : 699 -> 79
 --        - Mutating Infection (172 Corruption DoT) : 139 -> 19
---        - Vile Gas (71218, AoE puddle)            : 199 -> 29
 --      Auto-attacks are unchanged ("autos are fine" per playtest).
+--      (Originally a third entry tuned a Vile Gas action at id=12, but
+--       Vile Gas was retired entirely from Faegrim - the slot is now the
+--       CALL_KILLEDMONSTER safety net - so that UPDATE was dropped.)
 --
 --   3. Mount spell (900903) client-window polish. As shipped:
 --        - CastingTimeIndex = 1  -> instant cast, no cast bar
@@ -65,13 +67,6 @@ UPDATE `smart_scripts`
  WHERE `entryorguid` = @BR_BOSS
    AND `source_type` = 0
    AND `id` = 2
-   AND `action_type` = 218;
-
-UPDATE `smart_scripts`
-   SET `action_param3` = 29
- WHERE `entryorguid` = @BR_BOSS
-   AND `source_type` = 0
-   AND `id` = 12
    AND `action_type` = 218;
 
 -- ----------------------------------------------------------------------------

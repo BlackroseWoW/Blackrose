@@ -1,8 +1,6 @@
-#include "Chat.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellScript.h"
-#include "Config.h"
 
 enum Spells
 {
@@ -24,9 +22,6 @@ public:
 
     void OnPlayerLogin(Player* player) override
     {
-        if (sConfigMgr->GetOption<bool>("Announce.enable", true))
-            ChatHandler(player->GetSession()).SendSysMessage("Jello is the best.");
-
         // Two Forms (68995/68996) ships as a pair of gender-specific
         // transform spells, each hard-coded to a single Human
         // CreatureDisplayInfo (20707 male / 20708 female). Their

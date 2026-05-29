@@ -81,8 +81,8 @@ AutoBalance.Disable.PerInstance = "548, 550, 631, 649"
 #        Default: 1
 AutoBalance.MinPlayers = 1
 AutoBalance.MinPlayers.Heroic = 1
-AutoBalance.MinPlayers.Raid = 1
-AutoBalance.MinPlayers.RaidHeroic = 1
+AutoBalance.MinPlayers.Raid = 3
+AutoBalance.MinPlayers.RaidHeroic = 3
 
 #
 #     AutoBalance.MinPlayers.PerInstance

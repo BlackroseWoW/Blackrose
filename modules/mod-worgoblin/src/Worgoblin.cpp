@@ -72,6 +72,28 @@ class spell_rocket_barrage : public SpellScript
 {
     PrepareSpellScript(spell_rocket_barrage);
 
+    // Reject the cast entirely when the explicit target isn't a valid hostile.
+    // The spell ported from Cataclysm has TargetA flexible enough that the
+    // client lets you click any unit (friendly NPCs, party members, yourself)
+    // and the SchoolDamage effect happily lands - which lets a Goblin nuke
+    // a teammate or a quest NPC for ~level*2 + scaling. Gate it server-side
+    // so the GCD/cooldown isn't even consumed on an illegal target.
+    SpellCastResult CheckCast()
+    {
+        Unit* caster = GetCaster();
+        Unit* target = GetExplTargetUnit();
+        if (!caster || !target)
+            return SPELL_CAST_OK;
+
+        if (target == caster)
+            return SPELL_FAILED_BAD_TARGETS;
+
+        if (!caster->IsValidAttackTarget(target))
+            return SPELL_FAILED_BAD_TARGETS;
+
+        return SPELL_CAST_OK;
+    }
+
     void HandleDamage(SpellEffIndex /*effIndex*/)
     {
         Unit* caster = GetCaster();
@@ -83,7 +105,8 @@ class spell_rocket_barrage : public SpellScript
 
     void Register() override
     {
-        OnEffectLaunchTarget += SpellEffectFn(spell_rocket_barrage::HandleDamage, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+        OnCheckCast            += SpellCheckCastFn(spell_rocket_barrage::CheckCast);
+        OnEffectLaunchTarget   += SpellEffectFn(spell_rocket_barrage::HandleDamage, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
     }
 };
 

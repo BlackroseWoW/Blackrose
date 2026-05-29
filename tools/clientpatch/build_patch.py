@@ -113,8 +113,28 @@ def copy_custom_assets() -> tuple[int, int]:
         dbc.SCHEMAS[schema_name].filename
         for schema_name in DEFINITION_TO_SCHEMA.values()
     }
+    # Blizzard glue / FrameXML scripts that the upstream module ships are
+    # NOT packed. These files override stock Blizzard UI scripts and only
+    # work on the specific 3.3.5a build the upstream author tested
+    # against (~build 12340 with their local cache state). On a different
+    # client patch level or a freshly-cleared Cache/, the override
+    # references a missing global or widget kit and the parser bails out
+    # with 'Your login interface files are corrupt please reinstall the
+    # game' before the login screen even renders. The race-creation UI
+    # works fine on the stock CharacterCreate.lua because ChrRaces.dbc /
+    # CharSections.dbc / etc. already drive race enumeration there - the
+    # custom override is a polish item, not a hard requirement, so we
+    # leave it on the floor until it can be reauthored cleanly.
+    UI_SKIP_RELATIVE_PATHS = {
+        Path("Interface/GlueXML/CharacterCreate.lua"),
+        Path("Interface/GlueXML/CharacterCreate.xml"),
+        Path("Interface/GlueXML/GlueStrings.lua"),
+        Path("Interface/GlueXML/GlueParent.lua"),
+        Path("Interface/FrameXML/PetPaperDollFrame.lua"),
+    }
     file_count = 0
     passthrough_dbc_count = 0
+    skipped_ui = 0
     if not CUSTOM_DIR.is_dir():
         return (0, 0)
     for src in CUSTOM_DIR.rglob("*"):
@@ -126,12 +146,20 @@ def copy_custom_assets() -> tuple[int, int]:
             and rel.name in overlay_dbc_filenames
         ):
             continue
+        if rel in UI_SKIP_RELATIVE_PATHS:
+            skipped_ui += 1
+            continue
         dst = STAGING_ROOT / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
         file_count += 1
         if rel.parts[:1] == ("DBFilesClient",):
             passthrough_dbc_count += 1
+    if skipped_ui:
+        print(
+            f"  skipped {skipped_ui} upstream UI script override(s)"
+            " (Blizzard glue/FrameXML; see copy_custom_assets() comment)"
+        )
     return file_count, passthrough_dbc_count
 
 

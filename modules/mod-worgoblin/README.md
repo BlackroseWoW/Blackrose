@@ -131,8 +131,9 @@ C++ side is two files compiled into the worldserver:
 
 * `src/Worgoblin.cpp`
   * `class worgoblin : public PlayerScript`
-    * `OnPlayerLogin` - login banner (configurable via `Announce.enable`),
-      Two Forms gender dedup.
+    * `OnPlayerLogin` - Two Forms gender dedup (drops the wrong-gender
+      `learnSkillRewardedSpells` auto-grant from `m_spells` before
+      `SMSG_INITIAL_SPELLS` is built).
     * `OnPlayerFirstLogin` - Two Forms action-bar slot (button 11).
     * `OnPlayerGetReputationPriceDiscount` - Goblin Best Deals Anywhere
       (`69044`): multiplies vendor rep price by `0.8` (20% discount).
